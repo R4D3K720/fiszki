@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Szybki Fiszkownik</title>
+  <style>
+    :root{
+      --bg:#0f172a; /* slate-900 */
+      --panel:#111827; /* gray-900 */
+      --muted:#94a3b8; /* slate-400 */
+      --text:#e5e7eb; /* gray-200 */
+      --accent:#22c55e; /* green-500 */
+      --accent-2:#3b82f6; /* blue-500 */
+      --danger:#ef4444; /* red-500 */
+      --card:#0b1221;
+      --border:#1f2937;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,var(--bg),#0b1020 60%, #0a0f1d);color:var(--text);font:16px/1.5 system-ui,Segoe UI,Roboto,Arial}
+    header{padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#0f172add;backdrop-filter:blur(6px);z-index:10}
+    h1{margin:0;font-size:20px}
+    main{max-width:1000px;margin:20px auto;padding:0 16px;display:grid;gap:16px}
+    .grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 10px 25px #0004}
+    label{display:block;font-size:14px;color:var(--muted);margin-bottom:6px}
+    input, textarea, select{width:100%;background:#0b1327;color:var(--text);border:1px solid var(--border);padding:10px 12px;border-radius:12px;outline:none}
+    textarea{min-height:70px;resize:vertical}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .buttons{display:flex;gap:8px;flex-wrap:wrap}
+    button{background:#0b1327;border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;transition:transform .05s ease, background .2s}
+    button:hover{background:#0e1a36}
+    button:active{transform:translateY(1px)}
+    .primary{background:linear-gradient(180deg,var(--accent),#16a34a);border-color:#14532d;color:#06130b;font-weight:600}
+    .blue{background:linear-gradient(180deg,var(--accent-2),#2563eb);border-color:#1e40af}
+    .danger{background:linear-gradient(180deg,var(--danger),#dc2626);border-color:#7f1d1d}
+    .muted{color:var(--muted)}
+    table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    th,td{padding:10px 12px;text-align:left}
+    tr{background:#0b1327;border:1px solid var(--border)}
+    tr td:first-child,tr th:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
+    tr td:last-child,tr th:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
+    .right{justify-content:flex-end;margin-left:auto}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--border);font-size:12px;color:var(--muted)}
+    .flex{display:flex;gap:10px;align-items:center}
+    .space{display:flex;gap:10px;flex-wrap:wrap}
+    .center{text-align:center}
+    .big{font-size:24px;font-weight:700}
+    .hidden{display:none !important}
+    .progress{height:8px;background:#0b1327;border:1px solid var(--border);border-radius:999px;overflow:hidden}
+    .progress>div{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0%}
+    .wrap{display:flex;gap:16px;flex-wrap:wrap}
+    .tip{font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header class="wrap">
+    <h1>⚡ Szybki Fiszkownik</h1>
+    <span class="pill">dane zapisują się w przeglądarce (LocalStorage)</span>
+    <span id="count" class="pill">0 fiszek</span>
+    <span id="stats" class="pill">0% opanowane</span>
+  </header>
+
+  <main>
+    <section class="grid">
+      <div class="card">
+        <h2 style="margin-top:0">Dodaj/edytuj fiszkę</h2>
+        <div class="row">
+          <div>
+            <label>Słowo / pytanie (A)</label>
+            <input id="front" placeholder="np. dog" />
+          </div>
+          <div>
+            <label>Tłumaczenie / odpowiedź (B)</label>
+            <input id="back" placeholder="np. pies" />
+          </div>
+        </div>
+        <label>Przykład / notatka (opcjonalnie)</label>
+        <textarea id="note" placeholder="np. The dog is friendly."></textarea>
+        <div class="space">
+          <select id="deck">
+            <option value="default">Domyślny zestaw</option>
+          </select>
+          <input id="newDeck" placeholder="+ nowa nazwa zestawu" />
+          <button class="blue" id="addDeckBtn">Dodaj zestaw</button>
+        </div>
+        <div class="buttons" style="margin-top:12px">
+          <button class="primary" id="saveBtn">Zapisz fiszkę</button>
+          <button id="clearForm">Wyczyść</button>
+          <button class="danger" id="wipeAll">Usuń WSZYSTKO</button>
+          <span class="tip">Podwójny klik na fiszce w tabeli ➜ edycja</span>
+        </div>
+      </div>
+
+      <div class="card" id="studyCard">
+        <h2 style="margin-top:0">Tryb nauki</h2>
+        <div class="space">
+          <select id="studyDeck"></select>
+          <select id="direction">
+            <option value="AtoB">A ➜ B</option>
+            <option value="BtoA">B ➜ A</option>
+            <option value="mix">Mieszany</option>
+          </select>
+          <select id="mode">
+            <option value="flash">Fiszki (pisanie)</option>
+            <option value="choice">Wybór (ABCD)</option>
+          </select>
+          <button class="primary" id="startStudy">Start</button>
+          <button id="stopStudy">Stop</button>
+        </div>
+        <div class="progress" style="margin:12px 0"><div id="bar"></div></div>
+        <div id="quiz" class="hidden">
+          <div id="qFront" class="big"></div>
+          <div id="qNote" class="muted"></div>
+          <div id="answerWrap" style="margin-top:10px"></div>
+          <div class="buttons" style="margin-top:12px">
+            <button id="reveal">Pokaż / Sprawdź</button>
+            <button class="primary" id="correct">Umiałem</button>
+            <button class="danger" id="wrong">Nie umiałem</button>
+          </div>
+          <div id="solution" class="muted"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="wrap" style="justify-content:space-between;align-items:center">
+        <h2 style="margin:0">Twoje fiszki</h2>
+        <div class="space">
+          <select id="filterDeck"></select>
+          <input id="search" placeholder="Szukaj..." />
+          <button id="exportBtn">Eksport JSON</button>
+          <input type="file" id="importFile" accept="application/json" style="display:none" />
+          <button id="importBtn">Import JSON</button>
+          <button id="shuffleBtn">Wymieszaj</button>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:24px">#</th>
+            <th>A</th>
+            <th>B</th>
+            <th>Notatka</th>
+            <th>Zestaw</th>
+            <th>Powtórki</th>
+            <th>Akcje</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    // === Minimalny model danych ===
+    // card: {id, a, b, note, deck, right, wrong, last}
+    const LS_KEY = 'flashcards_v1';
+    const deckSelects = ['deck','studyDeck','filterDeck'];
+    let cards = load();
+    let editingId = null;
+
+    function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
+    function load(){try{ return JSON.parse(localStorage.getItem(LS_KEY))||[]}catch{ return []}}
+    function save(){localStorage.setItem(LS_KEY, JSON.stringify(cards));render()}
+
+    function decks(){
+      const set = new Set(cards.map(c=>c.deck||'default'));
+      set.add('default');
+      return [...set].sort((a,b)=>a.localeCompare(b,'pl'))
+    }
+
+    function render(){
+      // liczniki
+      document.getElementById('count').textContent = cards.length+" fiszek";
+      const mastered = cards.filter(c => c.right>=3 && c.right>c.wrong).length;
+      document.getElementById('stats').textContent = Math.round((mastered/(cards.length||1))*100)+"% opanowane";
+
+      // deki do selectów
+      deckSelects.forEach(id=>{
+        const sel = document.getElementById(id);
+        const value = sel.value;
+        sel.innerHTML = '';
+        decks().forEach(d=>{
+          const opt = document.createElement('option');
+          opt.value = d; opt.textContent = d==='default' ? 'Domyślny zestaw' : d;
+          sel.appendChild(opt);
+        });
+        if([...sel.options].some(o=>o.value===value)) sel.value=value;
+      });
+
+      // tabela
+      const filterDeck = document.getElementById('filterDeck').value || 'default';
+      const kw = (document.getElementById('search').value||'').toLowerCase();
+      const rows = cards
+       .filter(c => !filterDeck || filterDeck==='*' || c.deck===filterDeck)
+       .filter(c => [c.a,c.b,c.note].join(' ').toLowerCase().includes(kw))
+       .map((c,i)=>{
+          return `<tr data-id="${c.id}">
+            <td>${i+1}</td>
+            <td>${escapeHtml(c.a)}</td>
+            <td>${escapeHtml(c.b)}</td>
+            <td class="muted">${escapeHtml(c.note||'')}</td>
+            <td><span class="pill">${c.deck||'default'}</span></td>
+            <td><span class="pill">✅ ${c.right||0} · ❌ ${c.wrong||0}</span></td>
+            <td>
+              <button data-act="edit">Edytuj</button>
+              <button data-act="del" class="danger">Usuń</button>
+            </td>
+          </tr>`
+       }).join('');
+      document.getElementById('tbody').innerHTML = rows || '<tr><td colspan="7" class="muted">Brak fiszek – dodaj pierwszą powyżej 👍</td></tr>';
+    }
+
+    function escapeHtml(s){return (s||'').replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
+
+    // --- UI: zapisz fiszkę ---
+    document.getElementById('saveBtn').onclick = () => {
+      const a = document.getElementById('front').value.trim();
+      const b = document.getElementById('back').value.trim();
+      const note = document.getElementById('note').value.trim();
+      const deck = document.getElementById('deck').value || 'default';
+      if(!a || !b){ alert('Uzupełnij pola A i B.'); return }
+      if(editingId){
+        const c = cards.find(x=>x.id===editingId);
+        if(c){ c.a=a; c.b=b; c.note=note; c.deck=deck; }
+        editingId=null;
+      }else{
+        cards.push({id:uid(), a, b, note, deck, right:0, wrong:0, last:0});
+      }
+      // wyczyść
+      document.getElementById('front').value='';
+      document.getElementById('back').value='';
+      document.getElementById('note').value='';
+      save();
+    }
+
+    document.getElementById('clearForm').onclick = () => {
+      editingId=null; ['front','back','note'].forEach(id=>document.getElementById(id).value='')
+    }
+
+    // --- Deks: dodawanie ---
+    document.getElementById('addDeckBtn').onclick = () => {
+      const name = document.getElementById('newDeck').value.trim();
+      if(!name) return;
+      // dodaj pustą kartę technicznie? nie – po prostu odśwież selecty
+      if(!decks().includes(name)){
+        // nic trwałego, po zapisaniu fiszki deck się pojawi
+        const sel = document.getElementById('deck');
+        const opt = document.createElement('option');
+        opt.value=name; opt.textContent=name; sel.appendChild(opt); sel.value=name;
+        deckSelects.forEach(id=>document.getElementById(id).appendChild(opt.cloneNode(true)));
+      }
+      document.getElementById('newDeck').value='';
+    }
+
+    // --- tabela: akcje ---
+    document.getElementById('tbody').addEventListener('click', (e)=>{
+      const tr = e.target.closest('tr'); if(!tr) return;
+      const id = tr.getAttribute('data-id');
+      const act = e.target.getAttribute('data-act');
+      if(act==='del'){
+        if(confirm('Usunąć tę fiszkę?')){ cards = cards.filter(c=>c.id!==id); save(); }
+      }
+      if(act==='edit'){
+        const c = cards.find(x=>x.id===id); if(!c) return;
+        editingId = id;
+        document.getElementById('front').value=c.a;
+        document.getElementById('back').value=c.b;
+        document.getElementById('note').value=c.note||'';
+        document.getElementById('deck').value=c.deck||'default';
+        window.scrollTo({top:0, behavior:'smooth'});
+      }
+    });
+
+    // edycja też na double-click całego wiersza
+    document.getElementById('tbody').addEventListener('dblclick',(e)=>{
+      const tr = e.target.closest('tr'); if(!tr) return;
+      const btn = tr.querySelector('button[data-act="edit"]'); btn?.click();
+    })
+
+    // --- wyszukiwarka, filtr, shuffle ---
+    document.getElementById('search').oninput = render;
+    document.getElementById('filterDeck').onchange = render;
+    document.getElementById('shuffleBtn').onclick = ()=>{ cards.sort(()=>Math.random()-.5); save(); }
+
+    // --- import / export ---
+    document.getElementById('exportBtn').onclick = ()=>{
+      const blob = new Blob([JSON.stringify(cards,null,2)],{type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'fiszki.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+    document.getElementById('importBtn').onclick = ()=> document.getElementById('importFile').click();
+    document.getElementById('importFile').onchange = (e)=>{
+      const file = e.target.files[0]; if(!file) return;
+      const reader = new FileReader();
+      reader.onload = () => { try{
+        const data = JSON.parse(reader.result);
+        if(!Array.isArray(data)) throw new Error('Zły format pliku');
+        // normalizacja
+        data.forEach(c=>{ c.id=c.id||uid(); c.right=c.right||0; c.wrong=c.wrong||0; c.last=c.last||0; c.deck=c.deck||'default' })
+        cards = data; save();
+      }catch(err){ alert('Błąd importu: '+err.message) } };
+      reader.readAsText(file);
+    }
+
+    // === Tryb nauki ===
+    let study = {list:[], i:0, active:false};
+
+    function pickDirection(dir, card){
+      if(dir==='AtoB') return ['A', card.a, card.b];
+      if(dir==='BtoA') return ['B', card.b, card.a];
+      return Math.random()<.5 ? ['A', card.a, card.b] : ['B', card.b, card.a];
+    }
+
+    function resetQuizUI(){
+      document.getElementById('quiz').classList.add('hidden');
+      document.getElementById('solution').textContent='';
+      document.getElementById('answerWrap').innerHTML='';
+      document.getElementById('bar').style.width='0%';
+    }
+
+    function updateBar(){
+      document.getElementById('bar').style.width = Math.round(((study.i)/(study.list.length||1))*100)+"%";
+    }
+
+    document.getElementById('startStudy').onclick = ()=>{
+      const deck = document.getElementById('studyDeck').value || 'default';
+      const list = cards.filter(c=> c.deck===deck);
+      if(list.length===0){ alert('Brak fiszek w wybranym zestawie.'); return }
+      study.list = [...list];
+      // prosta kolejność: karty z mniejszym "right-wrong" najpierw
+      study.list.sort((a,b)=> ( (a.right-a.wrong) - (b.right-b.wrong) ))
+      study.i=0; study.active=true; document.getElementById('quiz').classList.remove('hidden');
+      nextQuestion();
+    }
+
+    document.getElementById('stopStudy').onclick = ()=>{ study.active=false; resetQuizUI(); }
+
+    function buildChoiceOptions(correct, pool){
+      const opts = new Set([correct]);
+      while(opts.size<4 && pool.length){
+        const r = pool[Math.floor(Math.random()*pool.length)];
+        opts.add(r);
+      }
+      return [...opts].sort(()=>Math.random()-.5)
+    }
+
+    function nextQuestion(){
+      if(!study.active) return;
+      if(study.i>=study.list.length){
+        document.getElementById('qFront').textContent='Koniec sesji! Świetna robota 🎉';
+        document.getElementById('qNote').textContent='';
+        document.getElementById('answerWrap').innerHTML='';
+        document.getElementById('solution').textContent='';
+        return;
+      }
+      updateBar();
+      const mode = document.getElementById('mode').value;
+      const dir = document.getElementById('direction').value;
+      const c = study.list[study.i];
+      const [side, ask, expect] = pickDirection(dir,c);
+
+      document.getElementById('qFront').textContent = ask;
+      document.getElementById('qNote').textContent = c.note||'';
+      document.getElementById('solution').textContent = '';
+
+      const wrap = document.getElementById('answerWrap');
+      wrap.innerHTML = '';
+
+      if(mode==='flash'){
+        const inp = document.createElement('input');
+        inp.placeholder = 'Twoja odpowiedź…';
+        inp.autofocus = true;
+        inp.onkeydown = (ev)=>{ if(ev.key==='Enter') document.getElementById('reveal').click() };
+        wrap.appendChild(inp);
+        document.getElementById('reveal').onclick = ()=>{
+          document.getElementById('solution').textContent = '✓ ' + expect;
+        }
+        document.getElementById('correct').onclick = ()=>{ c.right=(c.right||0)+1; c.last=Date.now(); study.i++; save(); nextQuestion(); }
+        document.getElementById('wrong').onclick = ()=>{ c.wrong=(c.wrong||0)+1; c.last=Date.now(); // wpychamy kartę na koniec jeszcze raz
+          study.list.push(c); study.i++; save(); nextQuestion(); }
+      } else {
+        // choice
+        const pool = study.list.map(x=>x.b).filter(x=>x!==expect);
+        const options = buildChoiceOptions(expect, pool);
+        options.forEach(opt=>{
+          const btn = document.createElement('button');
+          btn.textContent = opt; btn.style.display='block'; btn.style.width='100%'; btn.style.marginTop='8px';
+          btn.onclick = ()=>{
+            const ok = (opt===expect);
+            document.getElementById('solution').textContent = (ok? 'Dobrze! ' : 'Źle. ') + 'Poprawna odp.: '+expect;
+            if(ok){ c.right=(c.right||0)+1; study.i++; }
+            else { c.wrong=(c.wrong||0)+1; study.list.push(c); study.i++; }
+            c.last=Date.now(); save(); nextQuestion();
+          }
+          wrap.appendChild(btn);
+        })
+        // ukryj przyciski manualne w tym trybie
+        document.getElementById('reveal').onclick = ()=>{};
+        document.getElementById('correct').onclick = ()=>{};
+        document.getElementById('wrong').onclick = ()=>{};
+      }
+    }
+
+    // --- wipe ---
+    document.getElementById('wipeAll').onclick = ()=>{
+      if(confirm('Na pewno chcesz usunąć WSZYSTKIE fiszki?')){
+        cards=[]; save(); resetQuizUI();
+      }
+    }
+
+    // inicjalizacja
+    // dodaj do filterDeck opcję "* wszystkie"
+    const fd = document.getElementById('filterDeck');
+    const optAll = document.createElement('option'); optAll.value='*'; optAll.textContent='* wszystkie zestawy'; fd.appendChild(optAll);
+    render();
+  </script>
+</body>
+</html>
